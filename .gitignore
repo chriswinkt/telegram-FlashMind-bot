@@ -1,0 +1,31 @@
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore environment variable files
+.env
+hello.env
+
+# Ignore log files and system files
+*.log
+.DS_Store
+
+# Ignore OS-specific files
+Thumbs.db
+
+# Ignore VS Code and IDE settings
+.vscode/
+.idea/
+
+# Ignore compiled files
+*.so
+*.dll
+*.exe
+*.egg
+*.egg-info/
+dist/
+build/
