@@ -3,6 +3,8 @@ import httpx
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
+from telegram.ext import ContextTypes
+from telegram import MessageEntity
 
 load_dotenv("hello.env")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -47,16 +49,53 @@ async def ask_gpt(prompt):
 
 # Start Command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hi! I'm a ChatGPT bot powered by Groq. Ask me anything!")
+    await update.message.reply_text("👋 Welcome to FlashMind Bot!. Ask me anything!")
 
 # Handle Messages
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
-        return  # Ignore messages without text (e.g., stickers, contacts, etc.)
+        return  # Ignore non-text messages
 
+    # Only respond in groups if bot is mentioned
+    if update.message.chat.type in ['group', 'supergroup']:
+        entities = update.message.entities or []
+        bot_username = (await context.bot.get_me()).username
+
+        # Check if bot was mentioned
+        mentioned = any(
+            e.type == MessageEntity.MENTION and 
+            update.message.text[e.offset:e.offset + e.length] == f"@{bot_username}"
+            for e in entities
+        )
+
+        if not mentioned:
+            return  # Exit if bot was not mentioned
+
+    # Proceed to respond
     user_input = update.message.text
     reply = await ask_gpt(user_input)
     await update.message.reply_text(reply)
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = "🤖 *FlashMind Bot Help*\n\n" \
+                "/ask <question> – Ask anything.\n" \
+                "@BotName <message> – Mention to get replies in group.\n" \
+                "/help – Show this message."
+    await update.message.reply_text(help_text, parse_mode="Markdown")
+
+
+async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    question = ' '.join(context.args)
+    if not question:
+        await update.message.reply_text("❓ Please provide a question. Example: `/ask What is Python?`", parse_mode="Markdown")
+        return
+    await update.message.reply_text("💭 Thinking...")
+    
+    # Your AI response logic here (e.g., OpenAI API or custom model)
+    response = await ask_gpt(question)
+    
+    await update.message.reply_text(f"🤖 {response}")
+
 
 
 # Main function
@@ -65,6 +104,9 @@ if __name__ == '__main__':
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("ask", ask_command))
+
 
     print("🤖 Bot is running...")
     app.run_polling()
